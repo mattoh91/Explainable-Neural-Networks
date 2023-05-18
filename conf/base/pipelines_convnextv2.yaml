@@ -1,0 +1,31 @@
+data:
+  data_dir: "data/processed"
+  num_classes: 3
+
+model:
+  framework: "huggingface"
+  model_dir: "models"
+  model_filepath: ""
+  model_name: "facebook/convnextv2-tiny-1k-224"
+  save_name: "convnextv2"
+
+train:
+  fine_tune: False
+  params:
+    batch_size: 200
+    epochs: 20
+    learning_rate: 0.001
+  transforms:
+    image_size: 224
+
+eval:
+  params:
+    batch_size: 200
+    epochs: 20
+  transforms:
+    image_size: 224
+
+logging:
+  experiment_name: "xnn"
+  run_name: "featExt"
+  log_dir: "logs/mlruns"
