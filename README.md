@@ -56,7 +56,7 @@ unzip -q pneumonia.zip .
 Alternatively download the dataset from [here](https://drive.google.com/file/d/1AOd7h3OWTlBTQc8Gq-gbgIBCqPDxsO6S/view?usp=share_link).
   
 ### Wrangling
-The data source had allocated very few images to the validation folder. Wrangling was done within the `xnn.ipynb` notebook using a combination of `pandas` and `shutils` to (1) reorganise all images according to their classes in the `data/raw` folder, then split them into train / val / test subfolders in the ratio of 80:10:10. 3 images - 1 from each class - were randomly taken and put into the `data/predict` folder.
+The data source had allocated very few images to the validation folder. Wrangling was done within the `xnn.ipynb` notebook using a combination of `pandas` and `shutils` to (1) reorganise all images according to their classes in the `data/raw` folder, then (2) split them into train / val / test subfolders in the ratio of 80:10:10. 3 images - 1 from each class - were randomly taken and put into the `data/predict` folder.
   
 ## EDA - FiftyOne
 FiftyOne is an open-source tool developed by Voxel51 which visualises image datasets and enables exploration through tagging and filters.
