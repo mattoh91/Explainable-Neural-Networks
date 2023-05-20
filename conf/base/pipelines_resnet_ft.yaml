@@ -3,29 +3,34 @@ data:
   num_classes: 3
 
 model:
+  avgpool: "False"
   framework: "torch"
   model_dir: "models"
-  model_filepath: ""
   model_name: "resnet50"
   save_name: "resnet_ft"
+  weights: "IMAGENET1K_V2"
 
 train:
-  fine_tune: True
+  fine_tune:
+    bn_name: "bn"
+    fine_tune: True
+    model_filepath: ""
+    num_layers: 10
   params:
-    batch_size: 300
-    epochs: 2
-    learning_rate: 0.0001
+    batch_size: 100
+    epochs: 20
+    learning_rate: 0.00001
   transforms:
     image_size: 224
 
 eval:
   params:
-    batch_size: 300
-    epochs: 30
+    batch_size: 100
+    epochs: 20
   transforms:
     image_size: 224
 
 logging:
   experiment_name: "xnn"
-  run_name: "featExt"
+  run_name: "fineTune"
   log_dir: "logs/mlruns"

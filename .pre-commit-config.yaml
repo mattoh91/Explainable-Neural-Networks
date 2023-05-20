@@ -1,5 +1,3 @@
-# From: https://rednafi.github.io/digressions/python/2020/04/06/python-precommit.html
-
 repos:
   # isort
   - repo: https://github.com/asottile/seed-isort-config
@@ -21,6 +19,14 @@ repos:
           - --line-length=88
           - --include='\.pyi?$'
         language_version: python3
+  
+  # docformatter
+  - repo: https://github.com/PyCQA/docformatter
+    rev: v1.7.0
+    hooks:
+      - id: docformatter
+        args:
+          - --in-place
 
   # flake8
   - repo: https://github.com/pycqa/flake8
@@ -29,10 +35,11 @@ repos:
       - id: flake8
         args: # arguments to configure flake8
           # making isort line length compatible with black
+          # increased complexity from 18 to 26
           - "--max-line-length=88"
-          - "--max-complexity=18"
+          - "--max-complexity=26"
           - "--select=B,C,E,F,W,T4,B9"
 
-          # these are errors that will be ignored by flake8
+          # these are errors that will be ignored by flake8 - added E302
           # check out their meaning here: https://flake8.pycqa.org/en/latest/user/error-codes.html
-          - "--ignore=E203,E266,E501,W503,F403,F401,E402,E722"
+          - "--ignore=E203,E266,E302,E501,W503,F403,F401,E402,E722"

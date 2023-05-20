@@ -4,7 +4,8 @@ from enum import Enum
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
-from matplotlib import cm, colors, pyplot as plt
+from matplotlib import cm, colors
+from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
@@ -13,7 +14,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from numpy import ndarray
 
 try:
-    from IPython.display import display, HTML
+    from IPython.display import HTML, display
 
     HAS_IPYTHON = True
 except ImportError:
@@ -111,10 +112,9 @@ def visualize_image_attr(
     fig_size: Tuple[int, int] = (6, 6),
     use_pyplot: bool = True,
 ):
-    r"""
-    Visualizes attribution for a given image by normalizing attribution values
-    of the desired sign (positive, negative, absolute value, or all) and displaying
-    them using the desired mode in a matplotlib figure.
+    r"""Visualizes attribution for a given image by normalizing attribution
+    values of the desired sign (positive, negative, absolute value, or all) and
+    displaying them using the desired mode in a matplotlib figure.
 
     Args:
 
@@ -350,9 +350,8 @@ def visualize_image_attr_multiple(
     use_pyplot: bool = True,
     **kwargs: Any,
 ):
-    r"""
-    Visualizes attribution using multiple visualization methods displayed
-    in a 1 x k grid, where k is the number of desired visualizations.
+    r"""Visualizes attribution using multiple visualization methods displayed in
+    a 1 x k grid, where k is the number of desired visualizations.
 
     Args:
 
@@ -462,8 +461,7 @@ def visualize_timeseries_attr(
     use_pyplot: bool = True,
     **pyplot_kwargs,
 ):
-    r"""
-    Visualizes attribution for a given timeseries data by normalizing
+    r"""Visualizes attribution for a given timeseries data by normalizing
     attribution values of the desired sign (positive, negative, absolute value,
     or all) and displaying them using the desired mode in a matplotlib figure.
 
@@ -753,9 +751,7 @@ def visualize_timeseries_attr(
 
 
 class VisualizationDataRecord:
-    r"""
-    A data record for storing attribution relevant information
-    """
+    r"""A data record for storing attribution relevant information."""
     __slots__ = [
         "word_attributions",
         "pred_prob",

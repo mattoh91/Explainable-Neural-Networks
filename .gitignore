@@ -4,6 +4,8 @@ data/
 lightning_logs/
 logs/
 models/
+src/inference_api.py
+src/dashboard.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

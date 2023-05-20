@@ -3,11 +3,11 @@ data:
   num_classes: 3
 
 model:
-  avgpool: "False"
+  avgpool: "True"
   framework: "torch"
   model_dir: "models"
-  model_name: "resnet50"
-  save_name: "resnet"
+  model_name: "mobilenet_v2"
+  save_name: "mobilenetv2"
   weights: "IMAGENET1K_V2"
 
 train:
@@ -17,7 +17,7 @@ train:
     model_filepath: ""
     num_layers:
   params:
-    batch_size: 200
+    batch_size: 300
     epochs: 20
     learning_rate: 0.001
   transforms:
@@ -25,7 +25,7 @@ train:
 
 eval:
   params:
-    batch_size: 200
+    batch_size: 300
     epochs: 20
   transforms:
     image_size: 224
