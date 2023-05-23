@@ -1,22 +1,25 @@
 import io
 import logging
 from pathlib import Path
-from typing import Annotated
 
 import general_utils
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import visualization as viz
 from captum.attr import IntegratedGradients
-from datamodules import PneumoniaDataModule, PredictImageDataset
-from fastapi import FastAPI, File, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse, RedirectResponse
+from datamodules import PneumoniaDataModule
+from fastapi import FastAPI, UploadFile
+from fastapi.responses import RedirectResponse, Response
 from PIL import Image
-from pydantic import BaseModel
-from torchvision.transforms import ToTensor
 
 from models import ImageClassifier
 
+# Use non-interactive backend to prevent figure pop-ups
+matplotlib.use("Agg")
+
+# Constants
 CLASSES = ("bacteria", "normal", "virus")
 LOG_FILEPATH = Path("../conf/base/logging.yaml").resolve()
 
@@ -24,28 +27,27 @@ LOG_FILEPATH = Path("../conf/base/logging.yaml").resolve()
 # Then send image and this as a request body
 MODEL_FILEPATH = Path("../models/mobilenetv2_ft_200520231607.ckpt")
 
+# Define custom responses
+RESPONSES = {
+    200: {
+        "content": {"image/png": {}},
+        "description": "Prediction image with explainability mask.",
+    }
+}
+
+# Initialise fastapi app
 app = FastAPI()
-
-
-class Results(BaseModel):
-    tensor: list
-
 
 # Setup logger
 logger = logging.getLogger(__name__)
 logger.info("Setting up logging configuration.")
 general_utils.setup_logging(logging_config_path=LOG_FILEPATH)
 
+
+# Load model
 logger.info("Loading model.")
 model = ImageClassifier.load_from_checkpoint(MODEL_FILEPATH)
 model.cpu()
-
-# ### To Remove ###
-# DATA_DIR = Path.cwd().parent / "data/processed"
-# image_list = [DATA_DIR / "predict/IM-0022-0001.jpeg"]
-# dm_test = PneumoniaDataModule(image_size=224)
-# dm_test.setup("predict", pred_img_list=image_list)
-### End ###
 
 
 # Route requests to root over to swagger UI
@@ -56,8 +58,8 @@ def redirect_swagger():
 
 
 # Inference
-@app.post("/predict", status_code=status.HTTP_200_OK)
-async def predict(file: UploadFile) -> dict:
+@app.post("/predict", responses=RESPONSES)
+async def predict(file: UploadFile) -> Response:
     logger.info("Opening image file.")
     ext = file.filename.split(".")[-1]
     if ext not in ("jpg", "jpeg", "png"):
@@ -79,7 +81,7 @@ async def predict(file: UploadFile) -> dict:
 
     logger.info("Initialising explainability module.")
     prediction_score, pred_label_idx = torch.topk(pred, 1)
-    # pred_class = CLASSES[pred_label_idx]
+    pred_class = CLASSES[pred_label_idx]
     integrated_gradients = IntegratedGradients(model)
 
     logger.info("Computing integrated gradients.")
@@ -88,20 +90,28 @@ async def predict(file: UploadFile) -> dict:
     )
 
     logger.info("Generating explainability image mask.")
-    fig, ax = viz.visualize_image_attr(
+    fig, _ = viz.visualize_image_attr(
         np.transpose(attributions_ig.squeeze().cpu().detach().numpy(), (1, 2, 0)),
         np.transpose(batch.squeeze().cpu().detach().numpy(), (1, 2, 0)),
         method="blended_heat_map",
         show_colorbar=True,
         sign="all",
     )
+    image_buffer = io.BytesIO()
+    fig.savefig(image_buffer, format="png")
+    plt.close("all")
+    image_buffer.seek(0)
 
     logger.info("Sending response.")
-    fig.savefig(
-        "test.png"
-    )  # Stopped here; not sure if can put FileResponse in a Response Model
 
-    return FileResponse("test.png")
+    headers = {
+        "confidence": str(prediction_score.item()),
+        "predicted_class": pred_class,
+    }
+
+    return Response(
+        content=image_buffer.getvalue(), media_type="image/png", headers=headers
+    )
 
 
 def open_image(file) -> Image.Image:
