@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 
 # Constants
 CLASSES = ("bacteria", "normal", "virus")
-LOG_FILEPATH = Path("../conf/base/logging.yaml").resolve()
+LOG_CONFIG = Path("../conf/base/logging.yaml").resolve()
 
 # Add this dynamically using hydra in dashboard.py?
 # Then send image and this as a request body
@@ -41,7 +41,7 @@ app = FastAPI()
 # Setup logger
 logger = logging.getLogger(__name__)
 logger.info("Setting up logging configuration.")
-general_utils.setup_logging(logging_config_path=LOG_FILEPATH)
+general_utils.setup_logging(logging_config_path=LOG_CONFIG)
 
 
 # Load model
@@ -61,9 +61,6 @@ def redirect_swagger():
 @app.post("/predict", responses=RESPONSES)
 async def predict(file: UploadFile) -> Response:
     logger.info("Opening image file.")
-    ext = file.filename.split(".")[-1]
-    if ext not in ("jpg", "jpeg", "png"):
-        return "Image must be jpg or png format."
     image = io.BytesIO(await file.read())
 
     logger.info("Initialising datamodule.")
@@ -77,9 +74,11 @@ async def predict(file: UploadFile) -> Response:
     model.eval()
     with torch.no_grad():
         for batch_idx, batch in enumerate(dl):
-            pred = model.predict_step(batch.cpu(), batch_idx)
+            logits = model.predict_step(batch.cpu(), batch_idx)
 
     logger.info("Initialising explainability module.")
+    pred = torch.softmax(logits, dim=1)
+    pred = torch.softmax(pred, dim=1)
     prediction_score, pred_label_idx = torch.topk(pred, 1)
     pred_class = CLASSES[pred_label_idx]
     integrated_gradients = IntegratedGradients(model)
@@ -100,12 +99,13 @@ async def predict(file: UploadFile) -> Response:
     image_buffer = io.BytesIO()
     fig.savefig(image_buffer, format="png")
     plt.close("all")
+    # Reset image buffer to frame 0
     image_buffer.seek(0)
 
     logger.info("Sending response.")
 
     headers = {
-        "confidence": str(prediction_score.item()),
+        "predict_proba": str(prediction_score.item()),
         "predicted_class": pred_class,
     }
 
