@@ -177,7 +177,7 @@ class HFLitImageClassifier(LightningModule):
 class ImageClassifier(LightningModule):
     def __init__(
         self,
-        model_name: str,
+        model_name: str = None,
         avgpool: bool = False,
         weights: str = "DEFAULT",
         num_classes: int = 3,

@@ -1,31 +1,36 @@
+import argparse
 import io
 import logging
+import os
+import sys
 from pathlib import Path
 
-import general_utils
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import visualization as viz
 from captum.attr import IntegratedGradients
-from datamodules import PneumoniaDataModule
 from fastapi import FastAPI, UploadFile
 from fastapi.responses import RedirectResponse, Response
 from PIL import Image
+
+sys.path.append("./src")
+import general_utils
+import visualization as viz
+from datamodules import PneumoniaDataModule
 
 from models import ImageClassifier
 
 # Use non-interactive backend to prevent figure pop-ups
 matplotlib.use("Agg")
 
+
 # Constants
 CLASSES = ("bacteria", "normal", "virus")
-LOG_CONFIG = Path("../conf/base/logging.yaml").resolve()
-
-# Add this dynamically using hydra in dashboard.py?
-# Then send image and this as a request body
-MODEL_FILEPATH = Path("../models/mobilenetv2_ft_200520231607.ckpt")
+CWD = Path.cwd().resolve()
+LOG_CONFIG = CWD / "conf/base/logging.yaml"
+MODEL_FILEPATH = CWD / "models" / os.getenv("MODEL_FILENAME")
+# MODEL_FILEPATH = Path("./models")/"mobilenetv2_ft_200520232038.ckpt"
 
 # Define custom responses
 RESPONSES = {
@@ -43,11 +48,13 @@ logger = logging.getLogger(__name__)
 logger.info("Setting up logging configuration.")
 general_utils.setup_logging(logging_config_path=LOG_CONFIG)
 
-
 # Load model
 logger.info("Loading model.")
-model = ImageClassifier.load_from_checkpoint(MODEL_FILEPATH)
-model.cpu()
+checkpoint = torch.load(MODEL_FILEPATH, map_location=torch.device("cpu"))
+hyperparameters = checkpoint["hyper_parameters"]
+weights = checkpoint["state_dict"]
+model = ImageClassifier(**hyperparameters)
+model.load_state_dict(weights)
 
 
 # Route requests to root over to swagger UI

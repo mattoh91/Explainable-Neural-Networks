@@ -51,7 +51,3 @@ def main() -> None:
         )
         st.write(f"Predicted class: {resp_predicted_class}")
         st.write(f"Predicted probability: {resp_proba}")
-
-
-if __name__ == "__main__":
-    main()

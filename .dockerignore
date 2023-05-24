@@ -1,0 +1,22 @@
+archive/
+assets/
+data/
+environment.yaml
+LICENSE.txt
+logs/
+# models/
+models/conv*.ckpt
+models/res*.ckpt
+models/mobilenetv2_fe*.ckpt
+notebooks/
+outputs/
+train.sh
+README.md
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Byte-compiled / optimized / DLL files
+**/__pycache__/
