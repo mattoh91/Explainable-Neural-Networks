@@ -10,7 +10,7 @@ import requests
 import streamlit as st
 from PIL import Image
 
-# Constants\
+# Constants
 CWD = Path.cwd().resolve()
 LOG_CONFIG = CWD / "conf/base/logging.yaml"
 
