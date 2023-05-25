@@ -24,7 +24,6 @@ from models import ImageClassifier
 # Use non-interactive backend to prevent figure pop-ups
 matplotlib.use("Agg")
 
-
 # Constants
 CLASSES = ("bacteria", "normal", "virus")
 CWD = Path.cwd().resolve()

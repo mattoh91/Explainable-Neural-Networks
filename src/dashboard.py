@@ -10,15 +10,13 @@ import requests
 import streamlit as st
 from PIL import Image
 
-# Constants
-LOG_CONFIG = Path("../conf/base/logging.yaml").resolve()
+# Constants\
+CWD = Path.cwd().resolve()
+LOG_CONFIG = CWD / "conf/base/logging.yaml"
 
 
 def main() -> None:
-    """
-    Args:
-        cfg (DictConfig): Configuration extracted from a yaml file using Hydra.
-    """
+
     logger = logging.getLogger(__name__)
     logger.info("Setting up logging configuration.")
     general_utils.setup_logging(LOG_CONFIG)
@@ -36,7 +34,7 @@ def main() -> None:
         # Obtain byte data from uploaded_file - child class of io.BytesIO
         files = {"file": uploaded_file.getvalue()}
 
-        response = requests.post("http://127.0.0.1:8000/predict", files=files)
+        response = requests.post("http://fastapi-server:8080/predict", files=files)
 
         resp_image = Image.open(BytesIO(response.content))
         resp_proba = response.headers["predict_proba"]
@@ -51,3 +49,7 @@ def main() -> None:
         )
         st.write(f"Predicted class: {resp_predicted_class}")
         st.write(f"Predicted probability: {resp_proba}")
+
+
+if __name__ == "__main__":
+    main()

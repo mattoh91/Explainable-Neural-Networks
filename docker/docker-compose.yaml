@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  streamlit-ui:
+    build:
+      context: ${PWD}
+      dockerfile: docker/streamlit.Dockerfile
+    image: "mattoh91/xnn-streamlit:0.1.0"
+    ports:
+      - 8501:8501
+    depends_on:
+      - fastapi-server
+  fastapi-server:
+    build:
+      context: ${PWD}
+      dockerfile: docker/fastapi.Dockerfile
+    image: "mattoh91/xnn-fastapi:0.1.0"
+    ports:
+      - 8080:8080
+    environment:
+      - MODEL_FILENAME=mobilenetv2_ft_200520232038.ckpt
+    volumes: []
