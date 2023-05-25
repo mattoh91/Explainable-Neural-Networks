@@ -133,7 +133,7 @@ def fine_tune(
     model: LightningModule,
     fine_tune: bool = False,
     num_layers: Union[int, str] = None,
-    bn_name: str = None,
+    normlayer_name: str = None,
 ) -> None:
     """Sets `requires_grad` of weight tensors for fine-tuning.
 
@@ -150,6 +150,9 @@ def fine_tune(
         num_layers (int, optional): Int input specifies number of layers to maintain
         requires_grad=True. All other layers will be set to requires_grad=False since
         the default value is True after model is loaded.
+
+        normlayer_name (str, optional): Name / Partial name of batch norm layers which will
+        have their requires_grad set to False.
     """
     if fine_tune:
         # If num_layers not None and greater than 0
@@ -159,7 +162,7 @@ def fine_tune(
                 param.requires_grad = False
             # Set batchnorm layers to requires_grad=False
             for name, param in model.body.named_parameters():
-                if bn_name in name:
+                if normlayer_name in name:
                     param.requires_grad = False
 
     else:

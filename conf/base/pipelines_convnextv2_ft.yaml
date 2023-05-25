@@ -12,7 +12,7 @@ model:
 
 train:
   fine_tune:
-    bn_name: "norm.weight"
+    normlayer_name: "norm.weight"
     fine_tune: True
     model_filepath: ""
     num_layers: 20

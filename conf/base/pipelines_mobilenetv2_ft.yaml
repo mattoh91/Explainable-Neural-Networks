@@ -12,7 +12,7 @@ model:
 
 train:
   fine_tune:
-    bn_name: "bn"
+    normlayer_name: "bn"
     fine_tune: True
     model_filepath: ""
     num_layers: 15

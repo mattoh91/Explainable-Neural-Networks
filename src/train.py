@@ -37,13 +37,15 @@ def main(cfg: DictConfig) -> None:
         # Saved model will be entirely requires_grad==True
         if cfg["train"]["fine_tune"]["fine_tune"]:
             model = HFLitImageClassifier.load_from_checkpoint(
-                cwd / cfg["train"]["fine_tune"]["model_filepath"]
+                cwd / cfg["train"]["fine_tune"]["model_filepath"],
+                learning_rate=cfg["train"]["params"]["learning_rate"],
             )
         # Else feature extract using pre-train model
         else:
             model = HFLitImageClassifier(
                 checkpoint=cfg["model"]["model_name"],
                 num_classes=cfg["data"]["num_classes"],
+                learning_rate=cfg["train"]["params"]["learning_rate"],
             )
 
     elif cfg["model"]["framework"] == "torch":
@@ -58,7 +60,8 @@ def main(cfg: DictConfig) -> None:
         # Saved model will be entirely requires_grad==True
         if cfg["train"]["fine_tune"]["fine_tune"]:
             model = ImageClassifier.load_from_checkpoint(
-                cwd / cfg["train"]["fine_tune"]["model_filepath"]
+                cwd / cfg["train"]["fine_tune"]["model_filepath"],
+                learning_rate=cfg["train"]["params"]["learning_rate"],
             )
         # Else feature extract using pre-train model
         else:
@@ -67,6 +70,7 @@ def main(cfg: DictConfig) -> None:
                 avgpool=bool(cfg["model"]["avgpool"]),
                 weights=cfg["model"]["weights"],
                 num_classes=cfg["data"]["num_classes"],
+                learning_rate=cfg["train"]["params"]["learning_rate"],
             )
 
     # If fine-tune, set requires_grad=False for layers up to num_layers in body
@@ -74,7 +78,7 @@ def main(cfg: DictConfig) -> None:
         model,
         fine_tune=cfg["train"]["fine_tune"]["fine_tune"],
         num_layers=cfg["train"]["fine_tune"]["num_layers"],
-        bn_name=cfg["train"]["fine_tune"]["bn_name"],
+        normlayer_name=cfg["train"]["fine_tune"]["normlayer_name"],
     )
 
     early_stop_callback = EarlyStopping(
