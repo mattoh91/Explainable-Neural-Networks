@@ -42,6 +42,19 @@ The secondary objective of this repository is to develop pipelines that are inte
 └── src
 ```
   
+## Setup
+Clone this repository and `cd` into the working directory.
+```bash
+git clone git@github.com:mattoh91/Explainable-Neural-Networks.git
+cd Explainable-Neural-Networks
+```
+  
+Create the conda environment.
+```bash
+conda env create -f environment.yml
+conda activate xnn
+```
+
 ## Data
 This is a dataset of chest X-ray scans to identify whether the lungs are showing normal health, bacterial pneumonia, or viral pneumonia.
   
@@ -50,6 +63,7 @@ Curl down and unzip the data to the existing repositry using the command:
 ```bash
 # download using
 wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1VuaSBUw2MFTbobZ2ZcVjugVx-ey88xkF' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1VuaSBUw2MFTbobZ2ZcVjugVx-ey88xkF" -O pneumonia.zip && rm -rf /tmp/cookies.txt
+
 # Unzip using
 unzip -q pneumonia.zip .
 ```
@@ -90,21 +104,70 @@ docker rm fiftyone
 ```
   
 ## Training Pipeline
-Documentation WIP - refer to [src/train.py](src/train.py).
+### Feature Extraction
+The training pipeline is defined within the `./src/train.py` script. Run it with the following command. `-cn` is a `hydra` option that specifies the name of the config .yaml file referenced. The config dir is hardcoded to be `./conf/base`.
   
-## Inference + Explainability Pipeline
-Script and documentation WIP - refer to `Explainability` section of [notebooks/xnn.ipynb](notebooks/xnn.ipynb)
+The example config .yaml file below passes in config into `train.py` to set `requires_grad=False` all model body layers - ie. feature extraction.
+```bash
+python src/train.py \ 
+-cn pipelines_mobilenetv2.yaml \ # hydra config.yaml file in ./conf/base/
+```
   
-## Streamlit
-Script WIP
+### Fine-Tuning
+The example config .yaml file below passes in config into `train.py` to set `requires_grad=True` a defined number of model body layers excluding normalisation layers - ie. fine-tuning.
+```bash
+python src/train.py \ 
+-cn pipelines_mobilenetv2_ft.yaml \ # hydra config.yaml file in ./conf/base/
+train.fine_tune.model_filepath=models/mobilenetv2_fe_200520231134.ckpt # saved model in ./models/
+```
   
+### Logging
+`train.py` uses a Pytorch Lightning trainer with a MLFlow logger that is configured to save its logs in `./logs/mlruns`. 
+  
+The following hyperparameters and evaluation metrics have been hardcoded in `models.py` to be logged:
+![logged hyperparams and metrics](assets/images/logged.png)
+
+To view the logs use the following commands:
+```bash
+cd logs
+mlflow ui
+```
+
+### Model Saving
+The best model in terms of minimum `valid_loss` will be saved in `./models` as hardcoded in the `ModelCheckpoint` callback in `train.py`. The MLFlow logger will automatically create a `./logs/mlruns/models` folder but it has a lesser priority than the model save folder configured in ModelCheckpoint.
+  
+## Inference + Explainability App
+A Fastapi backend inference server and a simple Streamlit frontent UI have been developed and dockerised. To launch them, use the following command:
+```bash
+docker compose -f ./docker/docker-compose.yaml up --build
+```
+  
+| Fastapi | Streamlit |
+| --- | --- |
+| ![fastapi swagger ui](assets/images/fastapi.png) | ![streamlit ui](assets/images/streamlit.png) |
+  
+To use the app, drag and drop one of the images downloaded (see [Loading](#loading)) into the upload area, then press the `Predict` button. The same image should be returned with an explainability mask using Integrated Gradients where the green pixels contributed positively to the predicted class whilst the red pixels gave negative contributions.
+  
+## Getting Started Notebook
+Refer to `Explainability` section of [notebooks/xnn.ipynb](notebooks/xnn.ipynb)
+
+## Results
+WIP
+
 ## CI
 ### Pre-commit hook
-
+Pre-commit is a collection of hooks that are triggered upon every `git commit`. Specific to this project, these hooks are used to check and amend Python code to conform to PEP8 standards. Creating the conda environment (see [Setup](#setup)) should have already pip installed pre-commit, which references the predefined hooks in `.pre-commit-config.yaml`. To use pre-commit, simply follow the steps below:
+  
+1. Install the pre-commit hooks into your git repo:
+    ```bash
+    pre-commit install
+    ```
+2. Either do a `git commit` which automatically triggers the hooks, or manually run pre-commit to check specific files using the command below:
+    ```bash
+    pre-commit run --files ./path/to/folder/*  
+    ```
+  
 More information on pre-commit hook [here](https://pre-commit.com/).
-```bash
-pre-commit install
-```
   
 ### Github CI pipeline
 WIP
