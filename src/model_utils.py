@@ -112,6 +112,7 @@ def multiclass_prc(
     enc = OneHotEncoder()
     enc.fit(np.arange(0, num_classes, 1).reshape(-1, 1))
     labels_ohe = enc.transform(np.array(labels).reshape(-1, 1)).toarray()
+    # Per class precision-recall
     for i in range(len(classes)):
         PrecisionRecallDisplay.from_predictions(
             labels_ohe[:, i], preds.numpy()[:, i], name=classes[i], ax=ax_prc

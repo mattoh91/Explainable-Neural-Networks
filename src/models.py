@@ -17,12 +17,14 @@ class HFLitImageClassifier(LightningModule):
         num_classes: int,
         dropout_rate: float = 0.2,
         learning_rate: float = 0.001,
+        class_weights: List[float] = [0.7022, 1.2331, 1.3074],
     ):
 
         super().__init__()
         self.save_hyperparameters()
         self.num_classes = num_classes
         self.learning_rate = learning_rate
+        self.class_weights = class_weights
         self.body = AutoModel.from_pretrained(checkpoint)
         self.last_layer_size = list(self.body.modules())[-1].normalized_shape[0]
         self.classifier = nn.Sequential(
@@ -72,7 +74,9 @@ class HFLitImageClassifier(LightningModule):
         labels = batch["labels"]
         logits = self(pixel_values)
         # nn.CrossEntropyLoss not used to get loss and pred separately
-        loss = F.cross_entropy(logits, labels)
+        loss = F.cross_entropy(
+            logits, labels, weight=torch.tensor(self.class_weights, device=self.device)
+        )
         preds = torch.softmax(logits, dim=1)
         return loss, preds, labels
 
@@ -183,12 +187,14 @@ class ImageClassifier(LightningModule):
         num_classes: int = 3,
         dropout_rate: float = 0.2,
         learning_rate: float = 0.001,
+        class_weights: List[float] = [0.7022, 1.2331, 1.3074],
     ):
 
         super().__init__()
         self.save_hyperparameters()
         self.num_classes = num_classes
         self.learning_rate = learning_rate
+        self.class_weights = class_weights
         model = torchvision.models.get_model(name=model_name, weights=weights)
         last_layer_size = list(model.modules())[-1].in_features
         self.body = list(model.children())[:-1]
@@ -241,7 +247,9 @@ class ImageClassifier(LightningModule):
         pixel_values, labels = batch
         logits = self(pixel_values)
         # nn.CrossEntropyLoss not used to get loss and pred separately
-        loss = F.cross_entropy(logits, labels)
+        loss = F.cross_entropy(
+            logits, labels, weight=torch.tensor(self.class_weights, device=self.device)
+        )
         preds = torch.softmax(logits, dim=1)
         return loss, preds, labels
 

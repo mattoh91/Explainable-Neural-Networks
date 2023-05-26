@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import hydra
+import torch
 from datamodules import HFLitPneumoniaDataModule, PneumoniaDataModule
 from lightning.pytorch import Trainer
 from lightning.pytorch import loggers as pl_loggers
@@ -46,6 +47,7 @@ def main(cfg: DictConfig) -> None:
                 checkpoint=cfg["model"]["model_name"],
                 num_classes=cfg["data"]["num_classes"],
                 learning_rate=cfg["train"]["params"]["learning_rate"],
+                class_weights=cfg["data"]["class_weights"],
             )
 
     elif cfg["model"]["framework"] == "torch":
@@ -71,6 +73,7 @@ def main(cfg: DictConfig) -> None:
                 weights=cfg["model"]["weights"],
                 num_classes=cfg["data"]["num_classes"],
                 learning_rate=cfg["train"]["params"]["learning_rate"],
+                class_weights=cfg["data"]["class_weights"],
             )
 
     # If fine-tune, set requires_grad=False for layers up to num_layers in body
