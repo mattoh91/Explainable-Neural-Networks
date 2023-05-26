@@ -98,7 +98,7 @@ def main(cfg: DictConfig) -> None:
         save_top_k=1,
         verbose=True,
         monitor="valid_loss",
-        mode="min",
+        mode="max",
     )
 
     mlflow_logger = pl_loggers.MLFlowLogger(

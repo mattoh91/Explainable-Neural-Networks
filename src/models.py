@@ -17,7 +17,7 @@ class HFLitImageClassifier(LightningModule):
         num_classes: int,
         dropout_rate: float = 0.2,
         learning_rate: float = 0.001,
-        class_weights: List[float] = [0.7022, 1.2331, 1.3074],
+        class_weights: List[float] = None,
     ):
 
         super().__init__()
@@ -187,7 +187,7 @@ class ImageClassifier(LightningModule):
         num_classes: int = 3,
         dropout_rate: float = 0.2,
         learning_rate: float = 0.001,
-        class_weights: List[float] = [0.7022, 1.2331, 1.3074],
+        class_weights: List[float] = None,
     ):
 
         super().__init__()

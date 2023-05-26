@@ -1,5 +1,5 @@
 # Explainable-Neural-Networks
-
+  
 ## Introduction
 With the rapid advancement and increased usage of AI, it is important to understand how underlying models generate their outputs to allay fears and suspicion of unfair bias, and enable accountability which may be enforced by regulations and audits.
   
@@ -56,7 +56,7 @@ conda activate xnn
 ```
 
 ## Data
-This is a dataset of chest X-ray scans to identify whether the lungs are showing normal health, bacterial pneumonia, or viral pneumonia.
+This is a dataset of chest X-ray scans to identify whether the lungs are showing normal health, bacterial pneumonia, or viral pneumonia. Of the 5,856 medical scans, 2,780 (47.5%) are bacterial, 1,583 (27.0%) are normal and (25.5%) 1,493 are viral.
   
 ### Loading
 Curl down and unzip the data to the existing repositry using the command:
@@ -70,7 +70,7 @@ unzip -q pneumonia.zip .
 Alternatively download the dataset from [here](https://drive.google.com/file/d/1AOd7h3OWTlBTQc8Gq-gbgIBCqPDxsO6S/view?usp=share_link).
   
 ### Wrangling
-The data source had allocated very few images to the validation folder. Wrangling was done within the `xnn.ipynb` notebook using a combination of `pandas` and `shutils` to (1) reorganise all images according to their classes in the `data/raw` folder, then (2) split them into train / val / test subfolders in the ratio of 80:10:10. 3 images - 1 from each class - were randomly taken and put into the `data/predict` folder.
+The data source had allocated very few images to the validation folder. Wrangling was done within the `xnn.ipynb` notebook using a combination of `pandas` and `shutils` to (1) reorganise all images according to their classes in the `data/raw` folder, then (2) split them into train / val / test subfolders in the ratio of 80:10:10 in a stratified manner. 3 images - 1 from each class - were randomly taken and put into the `data/predict` folder.
   
 ## EDA - FiftyOne
 FiftyOne is an open-source tool developed by Voxel51 which visualises image datasets and enables exploration through tagging and filters.
@@ -104,6 +104,10 @@ docker rm fiftyone
 ```
   
 ## Training Pipeline
+### Modeling Considerations
+WIP  
+Cross Entropy loss function + class weights, AdamW Optimizer + weight decay regularisation, dropout regularisation, early stopping callback, learning rate scheduler, model choice
+  
 ### Feature Extraction
 The training pipeline is defined within the `./src/train.py` script. Run it with the following command. `-cn` is a `hydra` option that specifies the name of the config .yaml file referenced. The config dir is hardcoded to be `./conf/base`.
   
@@ -124,7 +128,7 @@ train.fine_tune.model_filepath=models/mobilenetv2_fe_200520231134.ckpt # saved m
 ### Logging
 `train.py` uses a Pytorch Lightning trainer with a MLFlow logger that is configured to save its logs in `./logs/mlruns`. 
   
-The following hyperparameters and evaluation metrics have been hardcoded in `models.py` to be logged:
+The following hyperparameters and evaluation metrics have been hardcoded in `models.py` to be logged:  
 ![logged hyperparams and metrics](assets/images/logged.png)
 
 To view the logs use the following commands:
@@ -152,7 +156,53 @@ To use the app, drag and drop one of the images downloaded (see [Loading](#loadi
 Refer to `Explainability` section of [notebooks/xnn.ipynb](notebooks/xnn.ipynb)
 
 ## Results
-WIP
+### Evaluation metrics
+With an imbalanced dataset, precision and recall metrics were used in favour of accuracy and Receiver Operating Characteristic curve (ROC) as they are not inflated by True Negative counts.
+  
+| Precision | Recall |
+| --- | --- |
+| ![precision](assets/images/precision.png) | ![recall](assets/images/recall.png) |
+* Precision Recall Curve (PRC): The PRC is the graphical form of precision and recall which illustrates the trade-off between minimising False Positives (FP) in precision versus minimising False Negatives (FN) in recall across different classifier probability thresholds. An ideal PRC would have an area under curve (AUC) of 1.
+  
+* F1-Score: The amalgamation of precision and recall
+  
+  ![f1](assets/images/f1.png)
+
+* Average precision (AP): Similar to the concept of AUC summarising the ROC curve, average precision summarises the PRC as the weighted mean of precisions at each threshold, where the weight is the increase in recall between the current and previous threshold. The value is between 0 and 1 and higher is better. In this implementation the logger was configured to log the average precision Torchmetric which is by default macro-averaged. Weighted-average was not used as I wanted each class to be treated with equal importance / weight.
+  
+    ![average precision](assets/images/avgprecision.png)
+
+### Results summary
+![results](assets/images/results.png)
+* Best model: `Fine-tuned Mobilenet v2 with class weights` has the highest test (macro) average precision.
+  
+| Confusion Matrix (CM) | CM Count Plot | PRC (per class + microavg) |
+| --- | --- | --- |
+| ![test confusion matrix](assets/images/test_confusion_matrix.png) | ![test cm counts](assets/images/test_pos_neg_counts.png) | ![test prc](assets/images/test_prc.png) |
+  
+* The test CM plots show the virus class having the most FP and FN, with the errors mostly relating to `bacteria` images being wrongly classified as `virus` and vice versa.
+* The point above is reiterated in the PRC which shows the `virus` PRC to have the smallest AUC and AP.
+  
+### Discussion:
+_Simpler models perform better_    
+* Earlier experiments using classifier heads with more neurons and fine-tuning with a greater number of layers with `requires_grad=True` performed more poorly. 
+* Looking into the most complex model used, Convnextv2, the validation loss oscillates above and below the training loss, which is indicative that the model has not generalised well to the unseen validation dataset. Unexpectedly, the greater complexity of the model may have resulted in overfitting.
+![convnextv2 fe loss](assets/images/convnextv2_fe_loss.png)
+  
+_Class weighting yields poorer F1_
+  
+| Confusion Matrix (CM) | CM Count Plot | PRC (per class + microavg) |
+| --- | --- | --- |
+| ![test confusion matrix](assets/images/test_confusion_matrix2.png) | ![test cm counts](assets/images/test_pos_neg_counts2.png) | ![test prc](assets/images/test_prc2.png) |
+  
+* The second best model - fine-tuned Mobilenet v2 without class weights - in terms of test AP has the best F1 and valid_loss.
+* Looking into its test PRC reveal a monotonically inverse relationship between precision and recall. In the best model, low levels of recall had a positive relationship with precision, that reversed at higher levels of recall.
+* Comparing its test CM against the best model, it had higher `bacteria` TP, lower `virus` FP (better virus precision), and to a lesser degree higher `virus` FN (worse virus recall). This contributed to a higher F1 overall.
+* The class weights applied has the intended effect of better minority class predictions, and is overall a more robust model despite contrary F1 results.
+
+  
+_SME input still required_    
+Integrated Gradients helps identify which pixels the classifier uses for prediction and is a great boon for error analysis. However SME input is still required to formulate the logic for errors before corrections can be made to model components.
 
 ## CI
 ### Pre-commit hook
@@ -169,5 +219,6 @@ Pre-commit is a collection of hooks that are triggered upon every `git commit`. 
   
 More information on pre-commit hook [here](https://pre-commit.com/).
   
-### Github CI pipeline
-WIP
+## WIP
+1. Github CI pipeline
+
