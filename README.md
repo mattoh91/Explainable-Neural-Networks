@@ -105,8 +105,13 @@ docker rm fiftyone
   
 ## Training Pipeline
 ### Modeling Considerations
-WIP  
-Cross Entropy loss function + class weights, AdamW Optimizer + weight decay regularisation, dropout regularisation, early stopping callback, learning rate scheduler, model choice
+* Model choice: A variety of increasingly complex image classifiers were used. The motivation behind this is to use the vanilla Mobilenetv2 (2.2M params) and Resnet as benchmarks for the more exotic Convnextv2 (27.9M params). For more in-depth information on each model, please refer to the [Appendix](#appendix) section.
+* Loss function: Cross entropy was used for this multiclassification problem. In addition, the `weight` argument is hyperparameterised via hydra to enable experiment runs with / without class weighting to account for class imbalance. This is discussed further in the [Results](#results) section.
+* Regularisation:
+    * AdamW Optimiser: AdamW was used in favour of Adam as it applies the weight decay hyperparameter after loss computation during the update step, which prevents the regularisation term from being included into the exponential moving average (EMA) gradient and the EMA squared gradient components, which would reduce the regularisation effect.
+    * Dropout layers: Dropout layers were used to introduce noise into the training process. Randomly dropping neurons prevents co-adaptation where one neuron compensates for the inaccuracy in a preceding neuron, enabling more robust gradient updates during backprop and a more robust model.
+    * Early stopping: Early stopping is implemented to stop training should validation loss be found to not be decreasing for 3 successive epochs, thus preventing overfitting on the training dataset.
+* Learning rate scheduler: A learning rate scheduler was used to decrease the learning rate if validation loss plateaus for 2 consecutive epochs. This prevents the gradient update from becoming too large, which would prevent the loss function from converging to its minima.
   
 ### Feature Extraction
 The training pipeline is defined within the `./src/train.py` script. Run it with the following command. `-cn` is a `hydra` option that specifies the name of the config .yaml file referenced. The config dir is hardcoded to be `./conf/base`.
@@ -141,6 +146,7 @@ mlflow ui
 The best model in terms of minimum `valid_loss` will be saved in `./models` as hardcoded in the `ModelCheckpoint` callback in `train.py`. The MLFlow logger will automatically create a `./logs/mlruns/models` folder but it has a lesser priority than the model save folder configured in ModelCheckpoint.
   
 ## Inference + Explainability App
+### Default Settings
 A Fastapi backend inference server and a simple Streamlit frontent UI have been developed and dockerised. To launch them, use the following command:
 ```bash
 docker compose -f ./docker/docker-compose.yaml up --build
@@ -152,12 +158,19 @@ docker compose -f ./docker/docker-compose.yaml up --build
   
 To use the app, drag and drop one of the images downloaded (see [Loading](#loading)) into the upload area, then press the `Predict` button. The same image should be returned with an explainability mask using Integrated Gradients where the green pixels contributed positively to the predicted class whilst the red pixels gave negative contributions.
   
+### Custom Model
+The default Fastapi image comes preloaded with a fine-tuned Mobilenetv2 model. Should you want to train and use your own model with the app, save your `.ckpt` model file in the `models/` folder, then change the highlighted sections in the `docker/docker-compose.yaml` file below:
+  
+![docker compose config](assets/images/dockercompose.png)
+  
+The volume will bind your local `model/` directory to the Docker container, whilst the `MODEL_FILENAME` environment variable will be passed into the Fastapi container, where it will be used for model loading.
+  
 ## Getting Started Notebook
 Refer to `Explainability` section of [notebooks/xnn.ipynb](notebooks/xnn.ipynb)
 
 ## Results
 ### Evaluation metrics
-With an imbalanced dataset, precision and recall metrics were used in favour of accuracy and Receiver Operating Characteristic curve (ROC) as they are not inflated by True Negative counts.
+With an imbalanced dataset, precision and recall metrics were used in favour of accuracy and Receiver Operating Characteristic curve (ROC) as they are not inflated by True Negative counts. Where applicable, these metrics were configured with `average="weighted"` as an argument to account for class imbalance.
   
 | Precision | Recall |
 | --- | --- |
@@ -168,37 +181,37 @@ With an imbalanced dataset, precision and recall metrics were used in favour of 
   
   ![f1](assets/images/f1.png)
 
-* Average precision (AP): Similar to the concept of AUC summarising the ROC curve, average precision summarises the PRC as the weighted mean of precisions at each threshold, where the weight is the increase in recall between the current and previous threshold. The value is between 0 and 1 and higher is better. In this implementation the logger was configured to log the average precision Torchmetric which is by default macro-averaged. Weighted-average was not used as I wanted each class to be treated with equal importance / weight.
+* Average precision (AP): Similar to the concept of AUC summarising the ROC curve and also known as AUC-PRC, average precision summarises the PRC as the weighted mean of precisions at each threshold, where the weight is the increase in recall between the current and previous threshold. The value is between 0 and 1 and higher is better.
   
     ![average precision](assets/images/avgprecision.png)
 
 ### Results summary
 ![results](assets/images/results.png)
-* Best model: `Fine-tuned Mobilenet v2 with class weights` has the highest test (macro) average precision.
+* Best model: `Fine-tuned Mobilenet v2 without class weights` has the highest test F1 and lowest validation loss.
   
 | Confusion Matrix (CM) | CM Count Plot | PRC (per class + microavg) |
 | --- | --- | --- |
-| ![test confusion matrix](assets/images/test_confusion_matrix.png) | ![test cm counts](assets/images/test_pos_neg_counts.png) | ![test prc](assets/images/test_prc.png) |
+| ![test confusion matrix](assets/images/test_confusion_matrix.png) | ![test cm counts](assets/images/test_cm_count_plot.png) | ![test prc](assets/images/test_prc.png) |
   
 * The test CM plots show the virus class having the most FP and FN, with the errors mostly relating to `bacteria` images being wrongly classified as `virus` and vice versa.
-* The point above is reiterated in the PRC which shows the `virus` PRC to have the smallest AUC and AP.
+* The point above is reiterated in the PRC which shows the `virus` PRC to have the smallest AP / AUC-PRC.
   
 ### Discussion:
 _Simpler models perform better_    
 * Earlier experiments using classifier heads with more neurons and fine-tuning with a greater number of layers with `requires_grad=True` performed more poorly. 
-* Looking into the most complex model used, Convnextv2, the validation loss oscillates above and below the training loss, which is indicative that the model has not generalised well to the unseen validation dataset. Unexpectedly, the greater complexity of the model may have resulted in overfitting.
-![convnextv2 fe loss](assets/images/convnextv2_fe_loss.png)
+* Looking into the most complex model used, Convnextv2, the validation loss plateaus at a much higher value compared to the simpler models.
   
 _Class weighting yields poorer F1_
   
 | Confusion Matrix (CM) | CM Count Plot | PRC (per class + microavg) |
 | --- | --- | --- |
-| ![test confusion matrix](assets/images/test_confusion_matrix2.png) | ![test cm counts](assets/images/test_pos_neg_counts2.png) | ![test prc](assets/images/test_prc2.png) |
+| ![test confusion matrix](assets/images/test_confusion_matrix2.png) | ![test cm counts](assets/images/test_cm_count_plot2.png) | ![test prc](assets/images/test_prc2.png) |
   
-* The second best model - fine-tuned Mobilenet v2 without class weights - in terms of test AP has the best F1 and valid_loss.
-* Looking into its test PRC reveal a monotonically inverse relationship between precision and recall. In the best model, low levels of recall had a positive relationship with precision, that reversed at higher levels of recall.
-* Comparing its test CM against the best model, it had higher `bacteria` TP, lower `virus` FP (better virus precision), and to a lesser degree higher `virus` FN (worse virus recall). This contributed to a higher F1 overall.
-* The class weights applied has the intended effect of better minority class predictions, and is overall a more robust model despite contrary F1 results.
+* Class weights were applied to the loss function during fine-tuning of the best-performing model to create a fine-tuned Mobilenet v2 with class weights model.
+* Unexpectedly this model registered a lower F1 than its non-class-weighted counterpart.
+* Looking at the per-class and microaveraged PRCs for the class-weighted Mobilenet v2 and its non-class-weighted counterpart, the latter shows marginally better AP (AUC-PRC). To investigate further, we look to the other 2 plots which have the counts of TP, TN, FP, FN.
+* Comparing the test CMs and count plots of the class-weighted Mobilenet v2 against its non-class-weighted counterpart, the former had higher `bacteria` FN and (worse bacteria recall) `virus` FP (worse virus precision), and to a lesser degree fewer `virus` FN (better virus recall) and `bacteria` FP (better bacteria precision). This contributed to a lower F1 overall.
+* The class weights applied has the intended effect of better minority class recall at the expense of minority class precision and majority class recall.
 
   
 _SME input still required_    
@@ -221,4 +234,14 @@ More information on pre-commit hook [here](https://pre-commit.com/).
   
 ## WIP
 1. Github CI pipeline
+  
+## Appendix
+  
+### Mobilenet v2
+WIP - depthwise separable convolutions
 
+### Resnet
+WIP - residual / skip connections
+  
+### Convnextv2
+WIP - global response normalisation
