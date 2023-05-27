@@ -1,7 +1,8 @@
 data:
   data_dir: "data/processed"
   num_classes: 3
-  class_weights: [0.7022, 1.2331, 1.3074]
+  class_weights:
+  # class_weights: [0.7022, 1.2331, 1.3074]
 
 model:
   avgpool: "False"
@@ -17,6 +18,8 @@ train:
     fine_tune: False
     model_filepath: ""
     num_layers:
+  metrics:
+    average: "weighted"
   params:
     batch_size: 200
     epochs: 20
@@ -27,7 +30,6 @@ train:
 eval:
   params:
     batch_size: 200
-    epochs: 20
   transforms:
     image_size: 224
 

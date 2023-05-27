@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torchvision
 from lightning.pytorch import LightningModule
 from model_utils import create_eval_plots
-from torchmetrics import Accuracy, AveragePrecision, F1Score, MetricCollection
+from torchmetrics import Accuracy, F1Score, MetricCollection, Precision, Recall
 from transformers import AutoModel
 
 
@@ -18,6 +18,7 @@ class HFLitImageClassifier(LightningModule):
         dropout_rate: float = 0.2,
         learning_rate: float = 0.001,
         class_weights: List[float] = None,
+        metric_avg: str = "weighted",
     ):
 
         super().__init__()
@@ -25,6 +26,7 @@ class HFLitImageClassifier(LightningModule):
         self.num_classes = num_classes
         self.learning_rate = learning_rate
         self.class_weights = class_weights
+        self.metric_avg = metric_avg
         self.body = AutoModel.from_pretrained(checkpoint)
         self.last_layer_size = list(self.body.modules())[-1].normalized_shape[0]
         self.classifier = nn.Sequential(
@@ -41,9 +43,26 @@ class HFLitImageClassifier(LightningModule):
         )
         metrics = MetricCollection(
             [
-                Accuracy(task="multiclass", num_classes=self.num_classes),
-                F1Score(task="multiclass", num_classes=self.num_classes),
-                AveragePrecision(task="multiclass", num_classes=self.num_classes),
+                Accuracy(
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                    average=self.metric_avg,
+                ),
+                F1Score(
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                    average=self.metric_avg,
+                ),
+                Precision(
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                    average=self.metric_avg,
+                ),
+                Recall(
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                    average=self.metric_avg,
+                ),
             ]
         )
         self.train_metrics = metrics.clone(prefix="train_")
@@ -73,10 +92,10 @@ class HFLitImageClassifier(LightningModule):
         pixel_values = batch["pixel_values"]
         labels = batch["labels"]
         logits = self(pixel_values)
+        if self.class_weights is not None:
+            self.class_weights = torch.tensor(self.class_weights, device=self.device)
         # nn.CrossEntropyLoss not used to get loss and pred separately
-        loss = F.cross_entropy(
-            logits, labels, weight=torch.tensor(self.class_weights, device=self.device)
-        )
+        loss = F.cross_entropy(logits, labels, weight=self.class_weights)
         preds = torch.softmax(logits, dim=1)
         return loss, preds, labels
 
@@ -188,6 +207,7 @@ class ImageClassifier(LightningModule):
         dropout_rate: float = 0.2,
         learning_rate: float = 0.001,
         class_weights: List[float] = None,
+        metric_avg: str = "weighted",
     ):
 
         super().__init__()
@@ -195,6 +215,7 @@ class ImageClassifier(LightningModule):
         self.num_classes = num_classes
         self.learning_rate = learning_rate
         self.class_weights = class_weights
+        self.metric_avg = metric_avg
         model = torchvision.models.get_model(name=model_name, weights=weights)
         last_layer_size = list(model.modules())[-1].in_features
         self.body = list(model.children())[:-1]
@@ -214,9 +235,26 @@ class ImageClassifier(LightningModule):
         )
         metrics = MetricCollection(
             [
-                Accuracy(task="multiclass", num_classes=self.num_classes),
-                F1Score(task="multiclass", num_classes=self.num_classes),
-                AveragePrecision(task="multiclass", num_classes=self.num_classes),
+                Accuracy(
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                    average=self.metric_avg,
+                ),
+                F1Score(
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                    average=self.metric_avg,
+                ),
+                Precision(
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                    average=self.metric_avg,
+                ),
+                Recall(
+                    task="multiclass",
+                    num_classes=self.num_classes,
+                    average=self.metric_avg,
+                ),
             ]
         )
         self.train_metrics = metrics.clone(prefix="train_")
@@ -246,10 +284,10 @@ class ImageClassifier(LightningModule):
 
         pixel_values, labels = batch
         logits = self(pixel_values)
+        if self.class_weights is not None:
+            self.class_weights = torch.tensor(self.class_weights, device=self.device)
         # nn.CrossEntropyLoss not used to get loss and pred separately
-        loss = F.cross_entropy(
-            logits, labels, weight=torch.tensor(self.class_weights, device=self.device)
-        )
+        loss = F.cross_entropy(logits, labels, weight=self.class_weights)
         preds = torch.softmax(logits, dim=1)
         return loss, preds, labels
 
@@ -288,7 +326,7 @@ class ImageClassifier(LightningModule):
         )
         mlflow_logger.log_figure(
             figure=fig_bar,
-            artifact_file="val_pos_neg_counts.png",
+            artifact_file="val_cm_count_plot.png",
             run_id=self.logger.run_id,
         )
         mlflow_logger.log_figure(
@@ -317,7 +355,7 @@ class ImageClassifier(LightningModule):
         )
         mlflow_logger.log_figure(
             figure=fig_bar,
-            artifact_file="test_pos_neg_counts.png",
+            artifact_file="test_cm_count_plot.png",
             run_id=self.logger.run_id,
         )
         mlflow_logger.log_figure(

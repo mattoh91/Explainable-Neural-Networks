@@ -48,6 +48,7 @@ def main(cfg: DictConfig) -> None:
                 num_classes=cfg["data"]["num_classes"],
                 learning_rate=cfg["train"]["params"]["learning_rate"],
                 class_weights=cfg["data"]["class_weights"],
+                metric_avg=cfg["train"]["metrics"]["average"],
             )
 
     elif cfg["model"]["framework"] == "torch":
@@ -74,6 +75,7 @@ def main(cfg: DictConfig) -> None:
                 num_classes=cfg["data"]["num_classes"],
                 learning_rate=cfg["train"]["params"]["learning_rate"],
                 class_weights=cfg["data"]["class_weights"],
+                metric_avg=cfg["train"]["metrics"]["average"],
             )
 
     # If fine-tune, set requires_grad=False for layers up to num_layers in body
@@ -97,7 +99,7 @@ def main(cfg: DictConfig) -> None:
         dirpath=cwd / cfg["model"]["model_dir"],
         save_top_k=1,
         verbose=True,
-        monitor="valid_loss",
+        monitor="valid_MulticlassF1Score",
         mode="max",
     )
 

@@ -111,6 +111,7 @@ def multiclass_prc(
     fig_prc, ax_prc = plt.subplots()
     enc = OneHotEncoder()
     enc.fit(np.arange(0, num_classes, 1).reshape(-1, 1))
+    # 1d labels need to be ohe
     labels_ohe = enc.transform(np.array(labels).reshape(-1, 1)).toarray()
     # Per class precision-recall
     for i in range(len(classes)):
