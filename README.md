@@ -111,6 +111,7 @@ docker rm fiftyone
     * _AdamW Optimiser_: AdamW was used in favour of Adam as it applies the weight decay hyperparameter after loss computation during the update step, which prevents the regularisation term from being included into the exponential moving average (EMA) gradient and the EMA squared gradient components, which would reduce the regularisation effect.
     * _Dropout layers_: Dropout layers were used to introduce noise into the training process. Randomly dropping neurons prevents co-adaptation where one neuron compensates for the inaccuracy in a preceding neuron, enabling more robust gradient updates during backprop and a more robust model.
     * _Early stopping_: Early stopping is implemented to stop training should validation loss be found to not be decreasing for 3 successive epochs, thus preventing overfitting on the training dataset.
+    * _Data augmentation_: Applying various transforms to input images increases the variance in your dataset without sourcing for new data, which improves the ability for the model to generalise to unseen data. Specifically, images were grayscaled, random-resized-cropped, and normalised to a 224x224 image.
 * _Learning rate scheduler_: A learning rate scheduler was used to decrease the learning rate if validation loss plateaus for 2 consecutive epochs. This prevents the gradient update from becoming too large, which would prevent the loss function from converging to its minima.
   
 ### Feature Extraction
@@ -264,20 +265,36 @@ More information on pre-commit hook [here](https://pre-commit.com/).
     * Stanford Online CS224U Natural Language Understanding [lecture](https://www.youtube.com/watch?v=RFE6xdfJvag)
 
 ### Resnet
-WIP - residual / skip connections
-* Motivation: Overcoming the degradation problem in deeper neural networks.
+* Motivation: Resnet was created to overcome the phenomenon known as the degradation problem in deeper neural networks. This occurs as layers are added to a network until it passes a point of accuracy saturation and starts to experience both test and training error increase. This is distinct from overfitting as training error is increasing.
 * Mechanics:
+    * The underlying notion is that adding more layers to a shallow network should at minimum achieve the same accuracy as the original shallow network.
+    * Mathematically speaking, the same accuracy can be achieved if every additional layer learns to output the identity function where X is the output of the preceding layer:
+    ![identity function](assets/images/identity_fn.png)
+    * Evidenced by the degradation problem, the identity function is not easily learnt through multiple non-linear functions / layers.
+    * Residual functions were proposed as an alternative and are applied as skip connections in residual blocks.
+    ![residual block](assets/images/residual_block.png)
+    * Given input `x`, a desired mapping / output `y`, additional layers in between can be treated as a residual `F(x) = y - x`. The model will ultimately still be learning to map `x` to `y` in the form of `y = F(x) + x`.
+    * This would enable the model to learn the identity function by setting the weights of the residual `F(x)` to 0, which is more easily learnt than the identity function without the residual in the equation.
+    * The authors proposed using 2-3 layers per block as a single layer would give a linear layer `y = Wx + x` where `F(x) = Wx`, which defeats the purpose of using a neural network to learn non-linear solutions. Two layers within a block would give a non-linear residual and introduce non-linearity to the output. The two-layer residual is shown below, where `σ`is a RELU function. 
+    ![residual block equation](assets/images/residual_block_eqn.png)
+    * The skip connection is placed behind a RELU as putting it after would result in a RELU activated residual with values constrained between 0 and 1. Ideally the residual should not be constrained so that it can be trained into any function which may output values outside 0 to 1.
 * Architecture:
-* Paper:
+![resnet architecture](assets/images/resnet_archi.png)
+* Paper: [Deep Residual Learning for Image Recognition (He, et al., 2015)](https://arxiv.org/abs/1512.03385)
 * Other references:
-
+    * Intuition Behind Resnet [article](https://towardsdatascience.com/intuition-behind-residual-neural-networks-fa5d2996b2c7) (Rajagopal, 2020)
+  
 ### Mobilenet v2
 WIP - depthwise separable convolutions
-* Motivation: Efficient convnets.
+* Motivation: Efficient convnets for mobile and embedded vision applications.
 * Mechanics:
 * Architecture:
 * Papers:
+    * [MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications (Howard, et al., 2017)](https://arxiv.org/abs/1704.04861)
+    * [Mobilenet v2: Inverted Residuals and Linear Bottlenecks (Sandler, et al., 2018)](https://arxiv.org/abs/1801.04381)
 * Other references:
+    * Depthwise Separable Convolutions [video](https://www.youtube.com/watch?v=T7o3xvJLuHk) (CodeEmporium, 2018)
+    * Mobilenetv2 applied DL lecture [video](https://www.youtube.com/watch?v=hzj9kEU8QdA) (Raissi, 2021)
   
 ### Convnextv2
 WIP - global response normalisation
@@ -285,4 +302,6 @@ WIP - global response normalisation
 * Mechanics:
 * Architecture:
 * Papers:
+    * Convnext
+    * Convnext v2
 * Other references:
