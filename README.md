@@ -61,7 +61,7 @@ This is a dataset of chest X-ray scans to identify whether the lungs are showing
 ### Loading
 Curl down and unzip the data to the existing repositry using the command:
 ```bash
-# download using
+# Download using
 wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1VuaSBUw2MFTbobZ2ZcVjugVx-ey88xkF' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1VuaSBUw2MFTbobZ2ZcVjugVx-ey88xkF" -O pneumonia.zip && rm -rf /tmp/cookies.txt
 
 # Unzip using
@@ -105,13 +105,13 @@ docker rm fiftyone
   
 ## Training Pipeline
 ### Modeling Considerations
-* Model choice: A variety of increasingly complex image classifiers were used. The motivation behind this is to use the vanilla Mobilenetv2 (2.2M params) and Resnet as benchmarks for the more exotic Convnextv2 (27.9M params). For more in-depth information on each model, please refer to the [Appendix](#appendix) section.
-* Loss function: Cross entropy was used for this multiclassification problem. In addition, the `weight` argument is hyperparameterised via hydra to enable experiment runs with / without class weighting to account for class imbalance. This is discussed further in the [Results](#results) section.
-* Regularisation:
-    * AdamW Optimiser: AdamW was used in favour of Adam as it applies the weight decay hyperparameter after loss computation during the update step, which prevents the regularisation term from being included into the exponential moving average (EMA) gradient and the EMA squared gradient components, which would reduce the regularisation effect.
-    * Dropout layers: Dropout layers were used to introduce noise into the training process. Randomly dropping neurons prevents co-adaptation where one neuron compensates for the inaccuracy in a preceding neuron, enabling more robust gradient updates during backprop and a more robust model.
-    * Early stopping: Early stopping is implemented to stop training should validation loss be found to not be decreasing for 3 successive epochs, thus preventing overfitting on the training dataset.
-* Learning rate scheduler: A learning rate scheduler was used to decrease the learning rate if validation loss plateaus for 2 consecutive epochs. This prevents the gradient update from becoming too large, which would prevent the loss function from converging to its minima.
+* _Model choice_: A variety of increasingly complex image classifiers were used. The motivation behind this is to use the vanilla Mobilenetv2 (2.2M params) and Resnet as benchmarks for the more exotic Convnextv2 (27.9M params). For more in-depth information on each model, please refer to the [Appendix](#appendix) section.
+* _Loss function_: Cross entropy was used for this multiclassification problem. In addition, the `weight` argument is hyperparameterised via hydra to enable experiment runs with / without class weighting to account for class imbalance. This is discussed further in the [Results](#results) section.
+* _Regularisation_:
+    *_ AdamW Optimiser_: AdamW was used in favour of Adam as it applies the weight decay hyperparameter after loss computation during the update step, which prevents the regularisation term from being included into the exponential moving average (EMA) gradient and the EMA squared gradient components, which would reduce the regularisation effect.
+    * _Dropout layers_: Dropout layers were used to introduce noise into the training process. Randomly dropping neurons prevents co-adaptation where one neuron compensates for the inaccuracy in a preceding neuron, enabling more robust gradient updates during backprop and a more robust model.
+    * _Early stopping_: Early stopping is implemented to stop training should validation loss be found to not be decreasing for 3 successive epochs, thus preventing overfitting on the training dataset.
+* _Learning rate scheduler_: A learning rate scheduler was used to decrease the learning rate if validation loss plateaus for 2 consecutive epochs. This prevents the gradient update from becoming too large, which would prevent the loss function from converging to its minima.
   
 ### Feature Extraction
 The training pipeline is defined within the `./src/train.py` script. Run it with the following command. `-cn` is a `hydra` option that specifies the name of the config .yaml file referenced. The config dir is hardcoded to be `./conf/base`.
@@ -143,7 +143,7 @@ mlflow ui
 ```
 
 ### Model Saving
-The best model in terms of minimum `valid_loss` will be saved in `./models` as hardcoded in the `ModelCheckpoint` callback in `train.py`. The MLFlow logger will automatically create a `./logs/mlruns/models` folder but it has a lesser priority than the model save folder configured in ModelCheckpoint.
+The best model in terms of maximum `valid_MulticlassF1Score` will be saved in `./models` as hardcoded in the `ModelCheckpoint` callback in `train.py`. The MLFlow logger will automatically create a `./logs/mlruns/models` folder but it has a lesser priority than the model save folder configured in ModelCheckpoint.
   
 ## Inference + Explainability App
 ### Default Settings
@@ -237,11 +237,52 @@ More information on pre-commit hook [here](https://pre-commit.com/).
   
 ## Appendix
   
-### Mobilenet v2
-WIP - depthwise separable convolutions
+### Integrated Gradients (IG)
+* Motivations:
+    * Formulate an axiomatic approach to evaluate deep learning (DL) attribution methods:
+        1. Sensitivity: (a) For every input and baseline (an input that is absent of any feature which serves as a basis for comparison) that differ in one feature but have different predictions, then the differing feature should be given a non-zero attribution. (b) If the function implemented by the deep network does not depend (mathematically) on some variable, then the attribution to that variable is always zero.
+        2. Implementation invariance: Two networks are functionally equivalent if their outputs are equal for all inputs, despite having very different implementations.
+    * Devise a new attribution method (IG) that champions these 2 axioms since most methods at the time of writing fall short of 1 axiom or the other.
+* Mechanics:
+    * In the case of image classifiers, early attribution models use high gradient values to tell which pixels / features have the most value / influence in the hypothesis function which transforms inputs into outputs (think high-valued `m` in `Y = mX + C`).
+    * However, gradients only describe `local` (to point in training) changes in your model's hypothesis function wrt pixel values.
+    * As the model learns pixel-prediction relationships, the gradients for these "learned" pixels saturate towards 0 - thus violating the Sensitivity axiom.
+    ![tensorflow ig example](assets/images/tf_ig_eg.png)
+    * Proposed IG algorithm:
+        1. Linear interpolation of small steps from a baseline `x'` with 0 value to an input feature `x` with a value of 1.
+        2. Compute gradients at each step.
+        3. Accumulate gradients using integration - the continuous analog for summation - then take an average for attribution scoring.
+* Mathematics:
+    * Original formula:
+    ![original IG](assets/images/ig_og.png)
+    * More computationally efficient implementation which uses trapezoidal [Riemann Sums](https://en.wikipedia.org/wiki/Riemann_sum) to approximate the definite integral:
+    ![approx IG](assets/images/ig_approx.png)
+  
+* Paper: [Axiomatic Attribution for Deep Networks (Sundararajan et al., 2017)](https://arxiv.org/abs/1703.01365)
+* Other references:
+    * Tensorflow [tutorial](https://www.tensorflow.org/tutorials/interpretability/integrated_gradients)
+    * Stanford Online CS224U Natural Language Understanding [lecture](https://www.youtube.com/watch?v=RFE6xdfJvag)
 
 ### Resnet
 WIP - residual / skip connections
+* Motivation: Overcoming the degradation problem in deeper neural networks.
+* Mechanics:
+* Architecture:
+* Paper:
+* Other references:
+
+### Mobilenet v2
+WIP - depthwise separable convolutions
+* Motivation: Efficient convnets.
+* Mechanics:
+* Architecture:
+* Papers:
+* Other references:
   
 ### Convnextv2
 WIP - global response normalisation
+* Motivation: Enhancing convnets to achieve comparable performances against vision transformers (ViT).
+* Mechanics:
+* Architecture:
+* Papers:
+* Other references:
