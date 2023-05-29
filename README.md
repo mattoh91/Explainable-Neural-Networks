@@ -299,11 +299,31 @@ More information on pre-commit hook [here](https://pre-commit.com/).
   
     * Pointwise convolution: This operation is used for depth-wise computation. Uses a 1x1 convolution to linearly combine the stacked output from the Depthwise convolution across the channels.
         ![pointwise conv](assets/images/pointwise-conv.png)
-    * Putting them together: Depthwise convolution has a receptive field of the kernel's height x width spatially but 1 features / channel-wise. Pointwise convolution complements this as it has a receptive field of 1 pixel spatially but encompasses all features / channel-wise.
+    * Putting them together: Depthwise convolution has a receptive field of the kernel's height x width spatially but 1 features / channel-wise. Pointwise convolution complements this as it has a receptive field of 1 pixel spatially but encompasses all features / channel-wise. The image below shows a standard conv (background) versus a depthwise separable conv (foreground):
         ![depthwise separable conv](assets/images/std_vs_depthwisesep.png)
+    * Mobilenet v1 also introduced 2 hyperparameters:
+        * Width multiplier: For a given layer M and width multiplier α, the number of input channels M becomes αM and the number of output channels N becomes αN. This hyperparameter can be used to thin a network uniformly at each layer.
+        * Resolution multiplier: This multiplier ρ is applied to the input image and the internal representation of every layer is subsequently reduced by the same multiplier. ρ ∈ (0, 1] which is typically set implicitly so that the input resolution of the network is 224, 192, 160 or 128. In practice we implicitly set ρ by setting the input resolution.
     * Mobilenet v2 introduced the concept of inverted residual blocks and linear bottlenecks.
+    * The linear bottleneck is the next innovative step that comes after the usage of the width multiplier hyperparameter from Mobilenet v1 to reduce the dimensionality of a layer whilst preventing non-linear activations from destroying too much information (eg. ReLU loses all information on values <0). This follows the 2 ideas:
+        1. The `Bottleneck` (ie. narrow layer) idea: For a layer L with an activation tensor of h x w pixels and d dimensions, the set of activation outputs forms a "manifold of interest" that could be embedded within a lower-dimensional subspace of the input space.
+        2. The `Linear` idea: Given that ReLU is the `max(0, F(x))` where `F(x)` is some linear function - this is a general statement that does not considering successive ReLU activations that are inputs into other ReLUs) - a non-zero volume (3d tensor) output corresponds to a linear transformation. 
+    * Inverted residual blocks are inspired by the intuition that the bottlenecks contain all the necessary information, while an
+    expansion layer acts merely as an implementation detail (to get a desired depth?) that accompanies a non-linear transformation of the tensor, we use shortcuts directly between the bottlenecks.
+    
+        | Standard Residual Block | Inverted Residual Block |
+        | --- | --- |
+        | ![normal resblock](assets/images/noninverted_resblock.png) | ![inverted resblock](assets/images/inverted_resblock.png) |
 
-* Architecture:
+        * Standard residual blocks from the original Resnet paper had residual blocks in a wide -> narrow -> wide configuration, with its skip connection from one wide layer to the other. Inverted residual blocks have residual blocks in a narrow -> wide -> narrow configuration with skip connections from one narrow layer to the other.
+        * Within the inverted residual block, depthwise separable convolutions from Mobilenet v1 is applied.
+    * Additional implementation details:
+        * ReLU6 is used as the activation function, which is ReLU upper bounded to 6. No idea why 6 except that this number gives good results.
+        * Mobilenet V2 consists blocks that either have stride of 1 or 2. The former refers to inverted residual blocks whilst the latter has no skip connection as the stride of 2 makes the dimensions between the input and output to be incompatible for the addition operation needed for the skip connection.
+    * Overall these ideas significantly reduce the number of parameters and multiplication operations in the network.
+
+* Architecture:  
+    ![mobilenet v2 archi](assets/images/mobilenetv2_archi.png)
 * Papers:
     * [MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications (Howard, et al., 2017)](https://arxiv.org/abs/1704.04861)
     * [Mobilenet v2: Inverted Residuals and Linear Bottlenecks (Sandler, et al., 2018)](https://arxiv.org/abs/1801.04381)
