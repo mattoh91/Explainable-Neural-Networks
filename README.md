@@ -233,8 +233,9 @@ Pre-commit is a collection of hooks that are triggered upon every `git commit`. 
   
 More information on pre-commit hook [here](https://pre-commit.com/).
   
-## WIP
+## Future Works
 1. Github CI pipeline
+2. LoRA for efficient fine-tuning
   
 ## Appendix
   
@@ -268,38 +269,55 @@ More information on pre-commit hook [here](https://pre-commit.com/).
 * Motivation: Resnet was created to overcome the phenomenon known as the degradation problem in deeper neural networks. This occurs as layers are added to a network until it passes a point of accuracy saturation and starts to experience both test and training error increase. This is distinct from overfitting as training error is increasing.
 * Mechanics:
     * The underlying notion is that adding more layers to a shallow network should at minimum achieve the same accuracy as the original shallow network.
-    * Mathematically speaking, the same accuracy can be achieved if every additional layer learns to output the identity function where X is the output of the preceding layer:
+    * Mathematically speaking, the same accuracy can be achieved if every additional layer learns to output the identity function where X is the output of the preceding layer:  
     ![identity function](assets/images/identity_fn.png)
     * Evidenced by the degradation problem, the identity function is not easily learnt through multiple non-linear functions / layers.
-    * Residual functions were proposed as an alternative and are applied as skip connections in residual blocks.
+    * Residual functions were proposed as an alternative and are applied as skip connections in residual blocks.  
     ![residual block](assets/images/residual_block.png)
     * Given input `x`, a desired mapping / output `y`, additional layers in between can be treated as a residual `F(x) = y - x`. The model will ultimately still be learning to map `x` to `y` in the form of `y = F(x) + x`.
     * This would enable the model to learn the identity function by setting the weights of the residual `F(x)` to 0, which is more easily learnt than the identity function without the residual in the equation.
-    * The authors proposed using 2-3 layers per block as a single layer would give a linear layer `y = Wx + x` where `F(x) = Wx`, which defeats the purpose of using a neural network to learn non-linear solutions. Two layers within a block would give a non-linear residual and introduce non-linearity to the output. The two-layer residual is shown below, where `σ`is a RELU function. 
+    * The authors proposed using 2-3 layers per block as a single layer would give a linear layer `y = Wx + x` where `F(x) = Wx`, which defeats the purpose of using a neural network to learn non-linear solutions. Two layers within a block would give a non-linear residual and introduce non-linearity to the output. The two-layer residual is shown below, where `σ`is a RELU function.  
     ![residual block equation](assets/images/residual_block_eqn.png)
     * The skip connection is placed behind a RELU as putting it after would result in a RELU activated residual with values constrained between 0 and 1. Ideally the residual should not be constrained so that it can be trained into any function which may output values outside 0 to 1.
-* Architecture:
+    * For deeper networks the authors suggest a bottleneck residual block, where 1x1 conv2d kernels are first used to reduce the input to a shallower depth, and then expand the intermediate output to a deeper depth. Overall this uses less trained parameters:  
+    ![bottleneck resblock](/assets/images/bottleneck_resblock.png)
+* Architecture:  
 ![resnet architecture](assets/images/resnet_archi.png)
 * Paper: [Deep Residual Learning for Image Recognition (He, et al., 2015)](https://arxiv.org/abs/1512.03385)
 * Other references:
     * Intuition Behind Resnet [article](https://towardsdatascience.com/intuition-behind-residual-neural-networks-fa5d2996b2c7) (Rajagopal, 2020)
   
-### Mobilenet v2
-WIP - depthwise separable convolutions
+### Mobilenet v2 - WIP
 * Motivation: Efficient convnets for mobile and embedded vision applications.
-* Mechanics:
+* Mechanics: 
+    * Mobilenet v1 introduced depthwise separable convolutions. As explained in [Paperswithcode](https://paperswithcode.com/method/depthwise-separable-convolution#:~:text=While%20standard%20convolution%20performs%20the,a%20linear%20combination%20of%20the), it is a deconstructed version of a standard convolution operation which splits the channel-wise (depth) and spatial-wise (height and width) into 2 steps - Depthwise and Pointwise convolutions:
+    * Depthwise convolution: This operation is used for spatial-wise computation (confusing naming convention - each channel comprises height and width with depth of 1). It involves the application of 1 kernel to each channel separately then apply a stacking operation to put each channel output back together again:
+
+        | Standard Conv | Depthwise Conv |
+        | --- | --- |
+        | ![normal conv](assets/images/normal_conv.png) | ![depthwise conv](assets/images/depthwise_conv.png) |
+  
+    * Pointwise convolution: This operation is used for depth-wise computation. Uses a 1x1 convolution to linearly combine the stacked output from the Depthwise convolution across the channels.
+        ![pointwise conv](assets/images/pointwise-conv.png)
+    * Putting them together: Depthwise convolution has a receptive field of the kernel's height x width spatially but 1 features / channel-wise. Pointwise convolution complements this as it has a receptive field of 1 pixel spatially but encompasses all features / channel-wise.
+        ![depthwise separable conv](assets/images/std_vs_depthwisesep.png)
+    * Mobilenet v2 introduced the concept of inverted residual blocks and linear bottlenecks.
+
 * Architecture:
 * Papers:
     * [MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications (Howard, et al., 2017)](https://arxiv.org/abs/1704.04861)
     * [Mobilenet v2: Inverted Residuals and Linear Bottlenecks (Sandler, et al., 2018)](https://arxiv.org/abs/1801.04381)
 * Other references:
+    * Groups, Depthwise, and Depthwise-Separable Convolution [video](https://www.youtube.com/watch?v=vVaRhZXovbw) (Animated AI, 2023)
     * Depthwise Separable Convolutions [video](https://www.youtube.com/watch?v=T7o3xvJLuHk) (CodeEmporium, 2018)
+    * Using Depthwise Separable Convolutions [article](https://machinelearningmastery.com/using-depthwise-separable-convolutions-in-tensorflow/) (Chng, 2022) 
+    * A Basic Introduction to Separable Convolutions [article](https://towardsdatascience.com/a-basic-introduction-to-separable-convolutions-b99ec3102728) (Wang, 2018)
     * Mobilenetv2 applied DL lecture [video](https://www.youtube.com/watch?v=hzj9kEU8QdA) (Raissi, 2021)
+    * Inverted Residuals and Linear Bottlenecks [article](https://towardsdatascience.com/mobilenetv2-inverted-residuals-and-linear-bottlenecks-8a4362f4ffd5) (Pröve, 2018)
   
-### Convnextv2
-WIP - global response normalisation
+### Convnextv2 - WIP
 * Motivation: Enhancing convnets to achieve comparable performances against vision transformers (ViT).
-* Mechanics:
+* Mechanics: v2 -> Global response normalisation
 * Architecture:
 * Papers:
     * Convnext
