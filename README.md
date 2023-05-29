@@ -287,7 +287,7 @@ More information on pre-commit hook [here](https://pre-commit.com/).
 * Other references:
     * Intuition Behind Resnet [article](https://towardsdatascience.com/intuition-behind-residual-neural-networks-fa5d2996b2c7) (Rajagopal, 2020)
   
-### Mobilenet v2 - WIP
+### Mobilenet v2
 * Motivation: Efficient convnets for mobile and embedded vision applications.
 * Mechanics: 
     * Mobilenet v1 introduced depthwise separable convolutions. As explained in [Paperswithcode](https://paperswithcode.com/method/depthwise-separable-convolution#:~:text=While%20standard%20convolution%20performs%20the,a%20linear%20combination%20of%20the), it is a deconstructed version of a standard convolution operation which splits the channel-wise (depth) and spatial-wise (height and width) into 2 steps - Depthwise and Pointwise convolutions:
@@ -335,11 +335,20 @@ More information on pre-commit hook [here](https://pre-commit.com/).
     * Mobilenetv2 applied DL lecture [video](https://www.youtube.com/watch?v=hzj9kEU8QdA) (Raissi, 2021)
     * Inverted Residuals and Linear Bottlenecks [article](https://towardsdatascience.com/mobilenetv2-inverted-residuals-and-linear-bottlenecks-8a4362f4ffd5) (Pröve, 2018)
   
-### Convnextv2 - WIP
-* Motivation: Enhancing convnets to achieve comparable performances against vision transformers (ViT).
-* Mechanics: v2 -> Global response normalisation
-* Architecture:
+### ConvNeXtv2
+* Motivation: Enhancing a standard convnet (Resnet) incrementally toward the design of a vision transformers (ViT) to push the performance of a convnet architecture to the limits.
+* Mechanics: 
+    * ConvNeXt v1: The incremental enhancement from a Resnet to Convnext v1 has been succinctly summarised by its authors in the form of this diagram which eventually compares convnet's final form to a Swin ViT:
+        ![convnext](assets/images/convnext.png)
+    * ConvNeXt v2: Enhances v1 by using a masked autoencoder and the Global Response Normalisation (GRN) layer.
+        * Masked autoencoder: The authors introduced an assymetric, fully convolutional  masked autoencoder (FCMAE) as a pre-training framework. It consists a sparse convolution-based ConvNeXt encoder and a lightweight ConvNeXt block decoder. The encoder processes only the visible pixels, and the decoder reconstructs the image using the encoded pixels and mask tokens. The loss is calculated only on the masked region.
+            ![masked autoencoder](assets/images/convnextv2_masked_autoencoder.png)
+        * ConvNeXt v1 vs v2 blocks:
+            ![convv1 vs v2 blocks](assets/images/convv1vsv2blocks.png)
+* Architecture:  
+    What is shown below is the architecture for ConvNeXt v1. V2's architecture is similar except for the different blocks.
+    ![convnextv1 archi](assets/images/convnextv1_archi.png)
 * Papers:
-    * Convnext
-    * Convnext v2
-* Other references:
+    * ConvNeXt: [A ConvNet for the 2020s (Liu, et al., 2022)](https://arxiv.org/pdf/2201.03545.pdf)
+    * ConvNeXt v2: [ConvNeXt V2: Co-designing and Scaling ConvNets with Masked Autoencoders (Woo, et al., 2023)](https://arxiv.org/pdf/2301.00808)
+* Other references: NA
