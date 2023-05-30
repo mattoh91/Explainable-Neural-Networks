@@ -341,12 +341,12 @@ More information on pre-commit hook [here](https://pre-commit.com/).
     * ConvNeXt v1: The incremental enhancement from a Resnet to Convnext v1 has been succinctly summarised by its authors in the form of this diagram which eventually compares convnet's final form to a Swin ViT:
         ![convnext](assets/images/convnext.png)
     * ConvNeXt v2: Enhances v1 by using a masked autoencoder and the Global Response Normalisation (GRN) layer.
-        * Masked autoencoder: The authors introduced an assymetric, fully convolutional  masked autoencoder (FCMAE) as a pre-training framework. It consists a sparse convolution-based ConvNeXt encoder and a lightweight ConvNeXt block decoder. The encoder processes only the visible pixels, and the decoder reconstructs the image using the encoded pixels and mask tokens. The loss is calculated only on the masked region.
+        * Masked autoencoder: The authors introduced an assymetric, fully convolutional  masked autoencoder (FCMAE) as a pre-training framework. It consists a sparse convolution-based ConvNeXt encoder and a lightweight ConvNeXt block decoder. The encoder processes only the visible pixels, and the decoder reconstructs the image using the encoded pixels and mask tokens. The loss is calculated only on the masked region.  
             ![masked autoencoder](assets/images/convnextv2_masked_autoencoder.png)
-        * ConvNeXt v1 vs v2 blocks:
+        * ConvNeXt v1 vs v2 blocks:  
             ![convv1 vs v2 blocks](assets/images/convv1vsv2blocks.png)
 * Architecture:  
-    What is shown below is the architecture for ConvNeXt v1. V2's architecture is similar except for the different blocks.
+    What is shown below is the architecture for ConvNeXt v1. V2's architecture is similar except for the different blocks.  
     ![convnextv1 archi](assets/images/convnextv1_archi.png)
 * Papers:
     * ConvNeXt: [A ConvNet for the 2020s (Liu, et al., 2022)](https://arxiv.org/pdf/2201.03545.pdf)
