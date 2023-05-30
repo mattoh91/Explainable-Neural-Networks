@@ -82,15 +82,15 @@ To launch FiftyOne, please follow the following steps:
 1. Assuming you have already cloned this Github repo and `cd` into it, build the service using docker:
 ```bash
 docker build -f docker/fiftyone.Dockerfile \
-    -t fiftyone:0.1.0 \
-    --platform linux/amd64 .  
+-t fiftyone:0.1.0 \
+--platform linux/amd64 .  
 ```
 2. Run the service using the command:
 ```bash
 docker run -p 5151:5151 \
-    --name fiftyone \
-    -v ./data:/data \
-    fiftyone:0.1.0    
+--name fiftyone \
+-v ./data:/data \
+fiftyone:0.1.0    
 ```
 3. Access the fiftyone dashboard using the link [http://localhost:5151](http://localhost:5151) which is hosted on your local machine.
 4. Stop the service using the command:
